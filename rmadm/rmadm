@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import config
+from rmadm import config
 import requests
 import platform
 import click
 import os
+import json
 
 MODULES_BASE_URL = "https://s3.amazonaws.com/redismodules"
 MODULE_FILE_TEMPLATE = "{name}.{os}-{arch}.{version}.zip"
@@ -19,13 +20,22 @@ def format_module_name(module, version='latest', os = OS):
 
 def format_url(resource):
 
-    return '{}/{}'.format(config.rl_api_host, resource)
+    return '{}/v1/{}'.format(config.rl_api_host, resource)
 
 
 def rl_auth():
-    return (config.rl_user, config.rl_password),
+    return requests.auth.HTTPBasicAuth(config.rl_user, config.rl_password)
 
 
+def get_db_status(db_name):
+    options = {
+        'name': db_name
+    }
+
+    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(), verify=False)
+    if resp.status_code != 200:
+        raise RuntimeError("Error: {}".format(resp.text))
+    return resp.json()
 def create_database(db_name, num_shards, max_memory, replication, modules, modules_args):
 
     options = {
@@ -37,11 +47,16 @@ def create_database(db_name, num_shards, max_memory, replication, modules, modul
         'memory_size': int(max_memory),
         'type': 'redis',
         'module_list': list(modules),
-        'module_list_args': list(modules_args) if modules_args else []
+        'module_list_args': list(modules_args) if modules_args else [],
+        'shards_placement': 'sparse',
+        'shard_key_regex': [{'regex': '.*{(?<tag>.*)}.*'}, {'regex': '(?<tag>.*)'}]
     }
 
-    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth())
-    return resp.json
+    
+    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(), verify=False)
+    if resp.status_code != 200:
+        raise RuntimeError("Error: {}".format(resp.text))
+    return resp.json()
 
 def download_file(url, outfile):
     """
@@ -68,7 +83,7 @@ def cli():
               help='Redis Enterprise Login Email ($RL_USER)')
 @click.option('--rl_password', prompt='Redis Enterprise Password ($RL_PASS)', hide_input=True, envvar = 'RL_PASS', 
               help='Redis Enterprise Password ($RL_PASS)')
-@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='127.0.0.1:9443', 
+@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='https://127.0.0.1:9443', 
               help='Redis Enterprise API Host ($RL_HOST)')
 def cluster(rl_user , rl_password, rl_host):
     """
@@ -114,12 +129,13 @@ def deploy_module(module, version):
     with open(mod_file, 'rb') as fp:
 
         resp = requests.post(format_url('modules'),  auth=rl_auth(),
-                             files={'module': (mod_file, fp, 'application/zip')})
+                             files={'module': (mod_file, fp, 'application/zip')}, 
+                             verify=False)
         if resp.status_code != 200:
             raise RuntimeError("Error uploading module: " + resp.text)
         
        
-        return resp.json['uid']
+        return resp.json()['uid']
 
 @cluster.command()
 @click.argument('module')
@@ -127,24 +143,27 @@ def deploy_module(module, version):
 def upload(module, version):
 
     uid = deploy_module(module, version)
-    print("Module UID: {}", resp.json['uid'])
+    print("Module UID: {}".format(uid))
 
 @cluster.command()
 @click.argument('module', required=True)
-@click.option('--version', prompt = 'Module Version', default='latest', help='Module Version')
+@click.option('--version', default='latest', help='Module Version')
 @click.option('--module_args', prompt = 'Module Config Arguments', default='', help='Module Configuration Argument List')
 @click.option('--db', prompt = 'Database Name', default='mydb', help='Database Name')
-@click.option('--shards', prompt = 'Number of Redis Sahrds', default=5, help='Number of Redis Shards')
+@click.option('--shards', prompt = 'Number of Redis Shards', default=5, help='Number of Redis Shards')
 @click.option('--maxmemory', prompt='Database Memory Limit (in GB)', default='4', help='Database Memory Limit (in GB)')
 @click.option('--replication',is_flag=True, default=False, prompt='Enable Replication', help='If set, replication is enabled')
 def create_db(module, version, module_args, db, shards, maxmemory, replication):
     """
-    Create a new database with a given module
+    Create a new database with the given module. By default we download the latest version
     """
-    print (module, version, module_args, db, shards, maxmemory, replication)
     uid = deploy_module(module,version)
-    print uid
-    #print(create_database(db, shards, maxmemory*(1024*1024*1024), replication, [module], [module_args]))
+    print("Module UID: {}".format(uid))
+    print "Creating db..."
+    ret = create_database(db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
+    print(json.dumps(ret, indent=2))
     
 if __name__ == '__main__':
     cli()
+
+# cschk host:port host:port 
