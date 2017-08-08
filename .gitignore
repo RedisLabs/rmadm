@@ -1,0 +1,8 @@
+*
+!/**/
+!**/*.py
+!**/*.md
+!.gitignore
+/build
+/.env
+

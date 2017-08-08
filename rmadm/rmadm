@@ -1,0 +1,150 @@
+#!/usr/bin/env python
+
+import config
+import requests
+import platform
+import click
+import os
+
+MODULES_BASE_URL = "https://s3.amazonaws.com/redismodules"
+MODULE_FILE_TEMPLATE = "{name}.{os}-{arch}.{version}.zip"
+ARCHITECTURE = platform.machine()
+OS = platform.system()
+
+
+def format_module_name(module, version='latest', os = OS):
+
+    return MODULE_FILE_TEMPLATE.format(name=module, os=os, arch=ARCHITECTURE, version=version)
+
+
+def format_url(resource):
+
+    return '{}/{}'.format(config.rl_api_host, resource)
+
+
+def rl_auth():
+    return (config.rl_user, config.rl_password),
+
+
+def create_database(db_name, num_shards, max_memory, replication, modules, modules_args):
+
+    options = {
+        'name': db_name,
+        'replication': bool(replication),
+        'sharding': True,
+        'shards_count': int(num_shards),
+        'version': '4.0',
+        'memory_size': int(max_memory),
+        'type': 'redis',
+        'module_list': list(modules),
+        'module_list_args': list(modules_args) if modules_args else []
+    }
+
+    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth())
+    return resp.json
+
+def download_file(url, outfile):
+    """
+    Download a file directly from url and write it to disk
+    """
+    print ("Downloading {}...".format(url))
+    resp = requests.get(url)
+    if resp.status_code != 200:
+        raise RuntimeError("Error downloading {}: {}".format(url, resp.text))
+
+    with open(outfile, 'wb+') as fp:
+        fp.write(resp.content)
+        print("Written output to {}".format(outfile))
+
+
+
+    
+@click.group()
+def cli():
+    pass
+
+@cli.group()
+@click.option('--rl_user', prompt='Redis Enterprise Login Email ($RL_USER)', envvar = 'RL_USER', default = 'user@example.com', 
+              help='Redis Enterprise Login Email ($RL_USER)')
+@click.option('--rl_password', prompt='Redis Enterprise Password ($RL_PASS)', hide_input=True, envvar = 'RL_PASS', 
+              help='Redis Enterprise Password ($RL_PASS)')
+@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='127.0.0.1:9443', 
+              help='Redis Enterprise API Host ($RL_HOST)')
+def cluster(rl_user , rl_password, rl_host):
+    """
+    RediSearch on RedisLabs Enterprise Cluster control utility
+    """
+    
+    config.rl_user = rl_user
+    config.rl_password = rl_password
+    config.rl_api_host = rl_host
+
+def download_module(module, version):
+    """
+    Download a module's RAMP package from http
+    """
+
+    mod_file = format_module_name(module, version=version)
+    
+    # s3 module download URL - no need for s3cmd or boto
+    url = '{}/{}/{}'.format(MODULES_BASE_URL, module, mod_file)
+    download_file(url, mod_file)
+    return mod_file
+
+@cli.command()
+@click.argument('module')
+@click.argument('version', default='latest')
+def download(module, version):
+    """
+    Download a module's RAMP package from http
+    """
+    return download_module(module, version)
+
+
+def deploy_module(module, version):
+    """
+    Upload a module file to the cluster and print its uid
+    """
+    
+    mod_file = format_module_name(module, version=version)
+    if not os.path.isfile(mod_file):
+        print("File {} does not exist, downloading it...".format(mod_file))
+        download_module(module, version)
+
+    with open(mod_file, 'rb') as fp:
+
+        resp = requests.post(format_url('modules'),  auth=rl_auth(),
+                             files={'module': (mod_file, fp, 'application/zip')})
+        if resp.status_code != 200:
+            raise RuntimeError("Error uploading module: " + resp.text)
+        
+       
+        return resp.json['uid']
+
+@cluster.command()
+@click.argument('module')
+@click.argument('version', default='latest')
+def upload(module, version):
+
+    uid = deploy_module(module, version)
+    print("Module UID: {}", resp.json['uid'])
+
+@cluster.command()
+@click.argument('module', required=True)
+@click.option('--version', prompt = 'Module Version', default='latest', help='Module Version')
+@click.option('--module_args', prompt = 'Module Config Arguments', default='', help='Module Configuration Argument List')
+@click.option('--db', prompt = 'Database Name', default='mydb', help='Database Name')
+@click.option('--shards', prompt = 'Number of Redis Sahrds', default=5, help='Number of Redis Shards')
+@click.option('--maxmemory', prompt='Database Memory Limit (in GB)', default='4', help='Database Memory Limit (in GB)')
+@click.option('--replication',is_flag=True, default=False, prompt='Enable Replication', help='If set, replication is enabled')
+def create_db(module, version, module_args, db, shards, maxmemory, replication):
+    """
+    Create a new database with a given module
+    """
+    print (module, version, module_args, db, shards, maxmemory, replication)
+    uid = deploy_module(module,version)
+    print uid
+    #print(create_database(db, shards, maxmemory*(1024*1024*1024), replication, [module], [module_args]))
+    
+if __name__ == '__main__':
+    cli()
