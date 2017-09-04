@@ -168,13 +168,13 @@ def deploy_module(module, version, file_name=None):
 @cluster.command()
 @click.argument('module')
 @click.argument('version', default='latest')
-@click.option('--file/-f', default=None, help='Upload module from a local file')
-def upload(module, version, filename):
+@click.option('--file', default=None, help='Upload module from a local file')
+def upload(module, version, file):
     """
     Upload a module package file to the cluster
     """
 
-    uid = deploy_module(module, version, filename)
+    uid = deploy_module(module, version, file)
     print("Module UID: {}".format(uid))
 
 @cluster.command()
@@ -182,12 +182,12 @@ def upload(module, version, filename):
 @click.argument('version', default='latest')
 @click.option('--bdb', default=1, help='BDB Id to upgrade the module on')
 @click.option('--file', default=None, help='Upload module from a local file')
-def upgrade(module, version, bdb, filename):
+def upgrade(module, version, bdb, file):
     """
     Upgrade a module on an existing BDB using a new module version
     """
 
-    uid = deploy_module(module, version, filename)
+    uid = deploy_module(module, version, file)
     #print("Module UID: {}".format(uid))
     print upgrade_module(bdb, uid)
 
@@ -201,11 +201,11 @@ def upgrade(module, version, bdb, filename):
 @click.option('--maxmemory', prompt='Database Memory Limit (in GB)', default='4', help='Database Memory Limit (in GB)')
 @click.option('--replication',is_flag=True, default=False, prompt='Enable Replication', help='If set, replication is enabled')
 @click.option('--file', default=None, help='Upload module from a local file')
-def create_db(module, version, module_args, db, shards, maxmemory, replication, filename):
+def create_db(module, version, module_args, db, shards, maxmemory, replication, file):
     """
     Create a new database with the given module. By default we download the latest version
     """
-    uid = deploy_module(module,version,filename)
+    uid = deploy_module(module,version,file)
     print("Module UID: {}".format(uid))
     print "Creating db..."
     ret = create_database(db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
