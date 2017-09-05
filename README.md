@@ -100,7 +100,7 @@ List available modules and versions, optionally filtering by specific module.
 
 Example:
 
-```sh
+```
 $ rmadm cluster list_modules
 
 --------------------------------------------------------------------------------
