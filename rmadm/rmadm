@@ -6,6 +6,8 @@ import click
 import os
 import json
 
+requests.packages.urllib3.disable_warnings()
+
 MODULES_BASE_URL = "https://s3.amazonaws.com/redismodules"
 MODULE_FILE_TEMPLATE = "{name}.{os}-{arch}.{version}.zip"
 ARCHITECTURE = platform.machine()
