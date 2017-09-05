@@ -94,3 +94,35 @@ Create a new database with the given module. By default we download the latest v
 
 --------
 
+## rmadm cluster list_modules [MODULE]
+
+List available modules and versions, optionally filtering by specific module.
+
+Example:
+
+```sh
+$ rmadm cluster list_modules
+
+--------------------------------------------------------------------------------
+| Module          | Version         | UID
+--------------------------------------------------------------------------------
+| bf              | 2.0             | 1e20a0697da9ba95d281f8bf3179bc4c
+| ft              | 9000.0          | b6ab49e747cc4debf70dcc57d799d004
+| ft              | 2000.0          | c7f15d6fc15b2d5324d2a5e38f667032
+| ft              | 11.0            | ed43dbf2983b69163e6b87376ae4f1cf
+| ft              | 9001.0          | 6c4b3dba6df68e8a2a6b271a053128b3
+--------------------------------------------------------------------------------
+```
+
+##  rmadm cluster upgrade [OPTIONS] MODULE [VERSION]
+
+Upgrade a module on an existing BDB using a new module version
+
+### Options:
+
+```
+  --bdb INTEGER  BDB Id to upgrade the module on
+  --file TEXT    Upload module from a local file
+  --help         Show this message and exit.
+```
+
