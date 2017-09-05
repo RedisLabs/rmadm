@@ -98,8 +98,7 @@ def upgrade_module(config, bdb_uid, module_uid):
     }
 
     url = format_url(config, 'modules/upgrade/bdb',bdb_uid)
-    print(url)
-    resp = requests.put(url, json=options, auth=rl_auth(config), verify=False)
+    resp = requests.post(url, json=options, auth=rl_auth(config), verify=False)
     if resp.status_code != 200:
         raise RuntimeError("Error: {}".format(resp.text))
 
@@ -136,6 +135,16 @@ def deploy_module(config, module, version, file_name=None):
        
         return resp.json()['uid']
 
+def get_modules(config):
+    url = format_url(config, "modules")
+    resp = requests.get(url,  auth=rl_auth(config), verify=False)
+    if resp.status_code != 200:
+        raise RuntimeError("Error getting module info: " + resp.text)
+
+    return resp.json()
+
+
+    
 
 class Config(object):
 
@@ -239,6 +248,27 @@ def create_db(config, module, version, module_args, db, shards, maxmemory, repli
     ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
     print(json.dumps(ret, indent=2))
     
+@cluster.command()
+@click.argument('module', required=False, default=None)
+@click.pass_obj
+def list_modules(config, module):
+    """
+    List available modules and versions
+    """
+
+   
+    modules = get_modules(config)
+    
+    fmt = '| {:<16}| {:<16}| {:<16}'
+    click.echo('\n' + '-'*80)
+    click.echo(fmt.format('Module', 'Version', 'UID'))
+    click.echo('-'*80)
+    for mod in modules:
+        if module and mod['module_name'] != module:
+            continue
+        click.echo(fmt.format(mod['module_name'], mod['version'], mod['uid'])) 
+    click.echo('-'*80)
+
 
 if __name__ == '__main__':
     cli(obj=Config())
