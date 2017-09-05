@@ -97,7 +97,9 @@ def upgrade_module(config, bdb_uid, module_uid):
         'module_list': [module_uid]
     }
 
-    resp = requests.put(format_url(config, 'bdbs',bdb_uid), json=options, auth=rl_auth(config), verify=False)
+    url = format_url(config, 'modules/upgrade/bdb',bdb_uid)
+    print(url)
+    resp = requests.put(url, json=options, auth=rl_auth(config), verify=False)
     if resp.status_code != 200:
         raise RuntimeError("Error: {}".format(resp.text))
 
