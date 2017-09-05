@@ -171,7 +171,7 @@ def cli(config):
               help='Redis Enterprise Login Email ($RL_USER)')
 @click.option('--rl_password', prompt='Redis Enterprise Password ($RL_PASS)', hide_input=True, envvar = 'RL_PASS', 
               help='Redis Enterprise Password ($RL_PASS)')
-@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='https://127.0.0.1:9443', 
+@click.option('--rl_host', envvar = 'RL_HOST', default='https://127.0.0.1:9443', 
               help='Redis Enterprise API Host ($RL_HOST)')
 @click.pass_obj              
 def cluster(config, rl_user , rl_password, rl_host):
