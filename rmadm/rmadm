@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from rmadm import config
 import requests
 import platform
 import click
@@ -24,21 +23,21 @@ def format_url(resource, id=None):
                 resource if id is None else '{}/{}'.format(resource, id))
 
 
-def rl_auth():
+def rl_auth(config):
     return requests.auth.HTTPBasicAuth(config.rl_user, config.rl_password)
 
 
-def get_db_status(db_name):
+def get_db_status(config, db_name):
     options = {
         'name': db_name
     }
 
-    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(), verify=False)
+    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(config), verify=False)
     if resp.status_code != 200:
         raise RuntimeError("Error: {}".format(resp.text))
     return resp.json()
 
-def create_database(db_name, num_shards, max_memory, replication, modules, modules_args):
+def create_database(config, db_name, num_shards, max_memory, replication, modules, modules_args):
 
     options = {
         'name': db_name,
@@ -55,7 +54,7 @@ def create_database(db_name, num_shards, max_memory, replication, modules, modul
     }
 
     
-    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(), verify=False)
+    resp = requests.post(format_url('bdbs'), json=options, auth=rl_auth(config), verify=False)
     if resp.status_code != 200:
         raise RuntimeError("Error: {}".format(resp.text))
     return resp.json()
@@ -71,30 +70,11 @@ def download_file(url, outfile):
 
     with open(outfile, 'wb+') as fp:
         fp.write(resp.content)
-        print("Written output to {}".format(outfile))
+    return outfile
 
 
 
     
-@click.group()
-def cli():
-    pass
-
-@cli.group()
-@click.option('--rl_user', prompt='Redis Enterprise Login Email ($RL_USER)', envvar = 'RL_USER', default = 'user@example.com', 
-              help='Redis Enterprise Login Email ($RL_USER)')
-@click.option('--rl_password', prompt='Redis Enterprise Password ($RL_PASS)', hide_input=True, envvar = 'RL_PASS', 
-              help='Redis Enterprise Password ($RL_PASS)')
-@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='https://127.0.0.1:9443', 
-              help='Redis Enterprise API Host ($RL_HOST)')
-def cluster(rl_user , rl_password, rl_host):
-    """
-    RediSearch on RedisLabs Enterprise Cluster control utility
-    """
-    
-    config.rl_user = rl_user
-    config.rl_password = rl_password
-    config.rl_api_host = rl_host
 
 def download_module(module, version):
     """
@@ -109,7 +89,7 @@ def download_module(module, version):
     return mod_file
 
 
-def upgrade_module(bdb_uid, module_uid):
+def upgrade_module(config, bdb_uid, module_uid):
     # overrides bdb's module list with the one provided.
     # TODO: retrieve BDB's module list and update instead of overriding.
 
@@ -117,24 +97,13 @@ def upgrade_module(bdb_uid, module_uid):
         'module_list': [module_uid]
     }
 
-    resp = requests.post(format_url('bdbs',bdb_uid), json=options, auth=rl_auth(), verify=False)
+    resp = requests.post(format_url('bdbs',bdb_uid), json=options, auth=rl_auth(config), verify=False)
     if resp.status_code != 200:
         raise RuntimeError("Error: {}".format(resp.text))
-    return resp.json()
 
+    return 'OK'
 
-
-
-@cli.command()
-@click.argument('module')
-@click.argument('version', default='latest')
-def download(module, version):
-    """
-    Download a module's RAMP package from http
-    """
-    return download_module(module, version)
-
-def deploy_module(module, version, file_name=None):
+def deploy_module(config, module, version, file_name=None):
     """
     Upload a module file to the cluster and print its uid. 
     If file_name is set, we do not try to download or extrapolate the file name, 
@@ -156,7 +125,7 @@ def deploy_module(module, version, file_name=None):
 
     with open(mod_file, 'rb') as fp:
 
-        resp = requests.post(format_url('modules'),  auth=rl_auth(),
+        resp = requests.post(format_url('modules'),  auth=rl_auth(config),
                              files={'module': (mod_file, fp, 'application/zip')}, 
                              verify=False)
         if resp.status_code != 200:
@@ -165,53 +134,107 @@ def deploy_module(module, version, file_name=None):
        
         return resp.json()['uid']
 
-@cluster.command()
+
+class Config(object):
+
+    def __init__(self):
+        self.rl_api_host = 'https://127.0.0.1:9443/'
+        self.rl_user = None
+        self.rl_password = None
+
+def ok(msg='OK'):
+    click.secho(msg, fg='green')
+def err(msg):
+    click.secho(msg, err=True, fg='red')
+@click.group()
+def cli():
+    pass
+
+@cli.group()
+@click.option('--rl_user', prompt='Redis Enterprise Login Email ($RL_USER)', envvar = 'RL_USER', default = 'user@example.com', 
+              help='Redis Enterprise Login Email ($RL_USER)')
+@click.option('--rl_password', prompt='Redis Enterprise Password ($RL_PASS)', hide_input=True, envvar = 'RL_PASS', 
+              help='Redis Enterprise Password ($RL_PASS)')
+@click.option('--rl_host', prompt='Redis Enterprise API Host ($RL_HOST)', envvar = 'RL_HOST', default='https://127.0.0.1:9443', 
+              help='Redis Enterprise API Host ($RL_HOST)')
+@click.pass_obj              
+def cluster(config, rl_user , rl_password, rl_host):
+    """
+    Cluster Commands: [create_db|upgrade|upload]
+    """
+    
+    config.rl_user = rl_user
+    config.rl_password = rl_password
+    config.rl_api_host = rl_host
+
+@cli.command()
 @click.argument('module')
 @click.argument('version', default='latest')
+def download(module, version):
+    """
+    Download a module's RAMP package from http
+    """
+    ok(download_module(module, version))
+
+
+@cluster.command()
 @click.option('--file', default=None, help='Upload module from a local file')
-def upload(module, version, file):
+@click.argument('module')
+@click.argument('version', default='latest')
+@click.pass_obj              
+def upload(config, module, version, file):
     """
     Upload a module package file to the cluster
     """
 
-    uid = deploy_module(module, version, file)
-    print("Module UID: {}".format(uid))
+    uid = deploy_module(config, module, version, file)
+    ok("Module UID: {}".format(uid))
 
 @cluster.command()
 @click.argument('module')
 @click.argument('version', default='latest')
 @click.option('--bdb', default=1, help='BDB Id to upgrade the module on')
 @click.option('--file', default=None, help='Upload module from a local file')
-def upgrade(module, version, bdb, file):
+@click.pass_obj              
+def upgrade(config, module, version, bdb, file):
     """
     Upgrade a module on an existing BDB using a new module version
     """
 
     uid = deploy_module(module, version, file)
     #print("Module UID: {}".format(uid))
-    print upgrade_module(bdb, uid)
+    ok(upgrade_module(config, bdb, uid))
 
+
+MODULE_DEFAULT_ARGS = {
+    'rscoordinator': 'PARTITIONS {}',
+    
+}
 
 @cluster.command()
 @click.argument('module', required=True)
 @click.option('--version', default='latest', help='Module Version')
-@click.option('--module_args', prompt = 'Module Config Arguments', default='', help='Module Configuration Argument List')
+@click.option('--module_args', default=None, help='Module Configuration Argument List')
 @click.option('--db', prompt = 'Database Name', default='mydb', help='Database Name')
 @click.option('--shards', prompt = 'Number of Redis Shards', default=5, help='Number of Redis Shards')
 @click.option('--maxmemory', prompt='Database Memory Limit (in GB)', default='4', help='Database Memory Limit (in GB)')
 @click.option('--replication',is_flag=True, default=False, prompt='Enable Replication', help='If set, replication is enabled')
 @click.option('--file', default=None, help='Upload module from a local file')
-def create_db(module, version, module_args, db, shards, maxmemory, replication, file):
+@click.pass_obj
+def create_db(config, module, version, module_args, db, shards, maxmemory, replication, file):
     """
     Create a new database with the given module. By default we download the latest version
     """
+    if module_args is None:
+        module_args = click.prompt('Custom Module Args', default=MODULE_DEFAULT_ARGS.get(module, '').format(shards) )
+
     uid = deploy_module(module,version,file)
-    print("Module UID: {}".format(uid))
-    print "Creating db..."
-    ret = create_database(db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
+    ok("Module UID: {}".format(uid))
+    click.secho("Creating db...", color='orange')
+    ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
     print(json.dumps(ret, indent=2))
     
+
 if __name__ == '__main__':
     cli()
 
-# cschk host:port host:port 
