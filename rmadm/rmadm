@@ -146,8 +146,11 @@ def ok(msg='OK'):
     click.secho(msg, fg='green')
 def err(msg):
     click.secho(msg, err=True, fg='red')
+
+
 @click.group()
-def cli():
+@click.pass_obj
+def cli(config):
     pass
 
 @cli.group()
@@ -178,9 +181,9 @@ def download(module, version):
 
 
 @cluster.command()
-@click.option('--file', default=None, help='Upload module from a local file')
 @click.argument('module')
 @click.argument('version', default='latest')
+@click.option('--file', default=None, help='Upload module from a local file')
 @click.pass_obj              
 def upload(config, module, version, file):
     """
@@ -236,5 +239,5 @@ def create_db(config, module, version, module_args, db, shards, maxmemory, repli
     
 
 if __name__ == '__main__':
-    cli()
+    cli(obj=Config())
 
