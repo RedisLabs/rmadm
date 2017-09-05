@@ -125,7 +125,7 @@ def deploy_module(config, module, version, file_name=None):
             raise RuntimeError("File {} not found".format(file_name))
 
     with open(mod_file, 'rb') as fp:
-
+        print("Deploying module to cluster...")
         resp = requests.post(format_url(config, 'modules'),  auth=rl_auth(config),
                              files={'module': (mod_file, fp, 'application/zip')}, 
                              verify=False)
