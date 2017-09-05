@@ -204,7 +204,7 @@ def upgrade(config, module, version, bdb, file):
     Upgrade a module on an existing BDB using a new module version
     """
 
-    uid = deploy_module(module, version, file)
+    uid = deploy_module(config, module, version, file)
     #print("Module UID: {}".format(uid))
     ok(upgrade_module(config, bdb, uid))
 
@@ -231,7 +231,7 @@ def create_db(config, module, version, module_args, db, shards, maxmemory, repli
     if module_args is None:
         module_args = click.prompt('Custom Module Args', default=MODULE_DEFAULT_ARGS.get(module, '').format(shards) )
 
-    uid = deploy_module(module,version,file)
+    uid = deploy_module(config, module, version, file)
     ok("Module UID: {}".format(uid))
     click.secho("Creating db...", color='orange')
     ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
