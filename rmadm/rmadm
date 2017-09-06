@@ -50,10 +50,13 @@ def create_database(config, db_name, num_shards, max_memory, replication, module
         'memory_size': int(max_memory),
         'type': 'redis',
         'module_list': list(modules),
-        'module_list_args': list(modules_args) if modules_args else [''],
         'shards_placement': 'sparse',
         'shard_key_regex': [{'regex': '.*{(?<tag>.*)}.*'}, {'regex': '(?<tag>.*)'}]
     }
+
+    if module_args:
+        options['module_list_args'] =list(modules_args)
+
 
     
     resp = requests.post(format_url(config, 'bdbs'), json=options, auth=rl_auth(config), verify=False)
@@ -224,7 +227,7 @@ def upgrade(config, module, version, bdb, file):
 
 MODULE_DEFAULT_ARGS = {
     'rscoordinator': 'PARTITIONS {}',
-    'rebloom': 'INITIAL_SIZE 100 ERROR_RATE 0.01'
+    #'rebloom': 'INITIAL_SIZE 100 ERROR_RATE 0.01'
 }
 
 @cluster.command()
@@ -247,7 +250,7 @@ def create_db(config, module, version, module_args, db, shards, maxmemory, repli
     uid = deploy_module(config, module, version, file)
     ok("Module UID: {}".format(uid))
     click.secho("Creating db...", color='orange')
-    ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
+    ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args] if module_args else None)
     print(json.dumps(ret, indent=2))
     
 @cluster.command()
