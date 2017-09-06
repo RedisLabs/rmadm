@@ -224,7 +224,7 @@ def upgrade(config, module, version, bdb, file):
 
 MODULE_DEFAULT_ARGS = {
     'rscoordinator': 'PARTITIONS {}',
-    
+    'rebloom': 'INITIAL_SIZE 100 ERROR_RATE 0.01'
 }
 
 @cluster.command()
