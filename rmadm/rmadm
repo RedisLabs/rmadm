@@ -54,7 +54,7 @@ def create_database(config, db_name, num_shards, max_memory, replication, module
         'shard_key_regex': [{'regex': '.*{(?<tag>.*)}.*'}, {'regex': '(?<tag>.*)'}]
     }
 
-    if module_args:
+    if modules_args:
         options['module_list_args'] =list(modules_args)
 
 
