@@ -50,7 +50,7 @@ def create_database(config, db_name, num_shards, max_memory, replication, module
         'memory_size': int(max_memory),
         'type': 'redis',
         'module_list': list(modules),
-        'module_list_args': list(modules_args) if modules_args else [],
+        'module_list_args': list(modules_args) if modules_args else [''],
         'shards_placement': 'sparse',
         'shard_key_regex': [{'regex': '.*{(?<tag>.*)}.*'}, {'regex': '(?<tag>.*)'}]
     }
