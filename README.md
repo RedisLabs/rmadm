@@ -11,7 +11,24 @@ This tool allows you to use modules in the Redis Labs Enterprise 5.0 cluster. It
 Assuming pip is installed on the machine (if not, it can be installed by `apt-get install python-pip` on Ubuntu)
 
 ```sh
-pip install git+https://github.com/RedisLabs/rmadm@master
+$ pip install git+https://github.com/RedisLabs/rmadm@master
+```
+
+## Prerequisits for Installing rmadm
+If you are on older operating systems like RHEL 6, you may need to get the dependencies updated. Depending on your OS you may need to substitude "apt-get" with "yum"
+
+if you do not have pip with your version of python please install pip
+```sh
+$ sudo apt-get install python-pip
+```
+Some older version pythons may, even though they have pip may require update to pip.
+```sh
+$ sudo pip install --upgrade pip
+```
+
+You may also need an update to the remote library for rmadm to work. The error may look like _"TypeError: request() got an unexpected keyword argument 'json'"_
+```sh
+pip install --upgrade requests 
 ```
 
 # Note on configuration and credentials
@@ -125,4 +142,5 @@ Upgrade a module on an existing BDB using a new module version
   --file TEXT    Upload module from a local file
   --help         Show this message and exit.
 ```
+
 
