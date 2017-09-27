@@ -9,5 +9,5 @@ setup(
     scripts=['rmadm/rmadm'],
     license='BSD 2-clause',
     packages=find_packages(),
-    install_requires=['click', 'requests>=2.4.2', 'colorama']
+    install_requires=['click', 'requests>=2.13', 'colorama']
 )
