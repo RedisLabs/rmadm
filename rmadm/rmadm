@@ -42,7 +42,7 @@ def get_db_status(config, db_name):
         raise RuntimeError("Error: {}".format(resp.text))
     return resp.json()
 
-def create_database(config, db_name, num_shards, max_memory, replication, modules, modules_args):
+def create_database(config, db_name, num_shards, max_memory, replication, modules):
 
     options = {
         'name': db_name,
@@ -53,7 +53,6 @@ def create_database(config, db_name, num_shards, max_memory, replication, module
         'memory_size': int(max_memory),
         'type': 'redis',
         'module_list': list(modules),
-        'module_list_args': list(modules_args) if modules_args else [''],
         'shards_placement': 'sparse',
         'shard_key_regex': [{'regex': '.*{(?<tag>.*)}.*'}, {'regex': '(?<tag>.*)'}]
     }
@@ -249,8 +248,9 @@ def create_db(config, module, version, module_args, db, shards, maxmemory, repli
 
     uid = deploy_module(config, module, version, file)
     ok("Module UID: {}".format(uid))
+    moduleObj = {'module_id':uid, 'module_args':module_args}
     click.secho("Creating db...", color='orange')
-    ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [uid], [module_args])
+    ret = create_database(config, db, shards, int(maxmemory)*(1024*1024*1024), replication, [moduleObj])
     print(json.dumps(ret, indent=2))
     
 @cluster.command()
