@@ -251,6 +251,7 @@ def upgrade(config, module, version, module_args, bdb, file):
 
 MODULE_DEFAULT_ARGS = {
     'rscoordinator': 'PARTITIONS {}',
+    'redisearch-enterprise': 'PARTITIONS {}',
     'rebloom': 'INITIAL_SIZE 100 ERROR_RATE 0.01'
 }
 

@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='rmadm',
-    version='0.1.2',
+    version='0.2',
     description='Command-line control tool for redis modules Redis Labs Enterprise Cluster',
     author='RedisLabs',
     url='https://github.com/redislabs/rmadm',
